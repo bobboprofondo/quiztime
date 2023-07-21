@@ -33,7 +33,7 @@ export default function Page() {
 function ChatRoom(props) {
   return (
     <div>
-      <div>Welcome to Quiztime {props?.user?.displayName || 'Unknown User'}</div>
+      <div>Welcome to Quizzy time {props?.user?.displayName || 'Unknown User'}</div>
       <div><SignOut signOut={props.signOut} /></div>
     </div>
   );
