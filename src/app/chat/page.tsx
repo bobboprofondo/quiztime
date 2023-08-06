@@ -3,7 +3,7 @@ import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { firebaseApp } from "../../firebase/quizfire";
 import { getFirestore, serverTimestamp, collection, addDoc, getDocs, query, orderBy, limit, where, FieldValue, onSnapshot } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface IMessage {
   id?: string;
@@ -60,19 +60,22 @@ function ChatRoom(props) {
   }
 
   const q = query(collection(props.db, 'chats'), orderBy('timestamp', 'desc'), limit(10))
-  const unsubscribe = onSnapshot(q, (querySnapshot) => {
-    const result = [];
-    querySnapshot.forEach((doc) => {
-      let tmp = doc.data();
-      result.push({
-        id: doc.id,
-        msg: tmp.msg,
-        uid: tmp.uid,
-        timestamp: tmp.timestamp,
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const result = [];
+      querySnapshot.forEach((doc) => {
+        let tmp = doc.data();
+        result.push({
+          id: doc.id,
+          msg: tmp.msg,
+          uid: tmp.uid,
+          timestamp: tmp.timestamp,
+        })
       })
-    })
-    props.setMessages(result);
-  });
+      props.setMessages(result);
+    });
+  }, [])
 
 
 
