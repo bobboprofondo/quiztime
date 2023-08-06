@@ -1,10 +1,16 @@
 "use client";
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-// import { useSignInWithGoogle } from "react-firebase-hooks/auth";
 import { firebaseApp } from "../../firebase/quizfire";
-import { getFirestore, serverTimestamp, collection, addDoc} from "firebase/firestore";
+import { getFirestore, serverTimestamp, collection, addDoc, getDocs, query, orderBy, limit, where, FieldValue, onSnapshot } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { useRouter } from "next/router";
+import { useState } from "react";
+
+interface IMessage {
+  id?: string;
+  msg: string;
+  uid: string;
+  timestamp: FieldValue;
+};
 
 export default function Page() {
   const auth = getAuth(firebaseApp);
@@ -19,37 +25,75 @@ export default function Page() {
     auth.signOut();
   }
 
-  const testSave = () => {
-    const db = getFirestore(firebaseApp);
-    const docco = {
-      msg: 'Bramp',
-      timestamp: serverTimestamp(),
-      uid: user.uid
-    }
-    console.log(docco)
-    addDoc(collection(db,'chats'),docco);
-    // setDoc(doc(db, 'chats', '22vSXIhnIIJzygzCB5nL'), docco);
-  }
-
+  const db = getFirestore(firebaseApp);
   const [user, loading] = useAuthState(auth);
+  const [messages, setMessages] = useState([])
 
   return (
     <div>
       <header></header>
       <section className="h-full w-full">
-        {user ? <ChatRoom user={user} signOut={signOut} testSave={testSave} /> : <SignIn signIn={signIn} />}
+        {user ? <ChatRoom
+          user={user}
+          signOut={signOut}
+          db={db}
+          messages={messages}
+          setMessages={setMessages}
+        /> : <SignIn signIn={signIn} />}
       </section>
     </div>
   );
 }
 
 function ChatRoom(props) {
+
+  const sendMessage = async (event) => {
+    event.preventDefault();
+
+    const message: IMessage = {
+      msg: event.target.message.value,
+      uid: props.user.uid,
+      timestamp: serverTimestamp(),
+    }
+    addDoc(collection(props.db, 'chats'), message);
+
+  }
+
+  const q = query(collection(props.db, 'chats'), orderBy('timestamp', 'desc'), limit(10))
+  const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const result = [];
+    querySnapshot.forEach((doc) => {
+      let tmp = doc.data();
+      result.push({
+        id: doc.id,
+        msg: tmp.msg,
+        uid: tmp.uid,
+        timestamp: tmp.timestamp,
+      })
+    })
+    props.setMessages(result);
+  });
+
+
+
+  // const msgs:IMessage[] = getMessages().then((response) => {return response.docs});
+  return (<MessageList sendMessage={sendMessage} messages={props.messages} setMessages={props.setMessages} />)
+};
+
+function MessageList(props) {
   return (
     <div className="h-full w-full flex flex-col place-items-center">
       <div className="flex-auto place-self-center">Welcome to Quizzy time {props?.user?.displayName || 'Unknown User'}</div>
       <div className="flex-auto"><SignOut signOut={props.signOut} /></div>
+      <ul>
+        {props.messages.map((msg: IMessage) => { return (<li key={msg.id}>{msg.msg || 'No message'}</li>) })}
+      </ul>
       <div>
-        <button onClick={props.testSave}>Click here!</button>
+        <form onSubmit={props.sendMessage}>
+          <label htmlFor="message">Say What?</label>
+          <input className="text-black" type="text" id="message" name="message" required />
+          <button type="submit">Send</button>
+        </form>
       </div>
     </div>
   );
